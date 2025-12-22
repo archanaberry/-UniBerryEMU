@@ -22,7 +22,7 @@
 
 // arm.c
 
-#include "arch/arm.h"
+#include "arm.h"
 #include "../ubemu.h"
 #include <stdio.h>
 #include <stdlib.h>

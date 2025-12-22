@@ -23,7 +23,7 @@
 
 // 8086.c
 
-#include "arch/8086.h"
+#include "8086.h"
 #include "../ubemu.h"
 #include <stdio.h>
 #include <stdlib.h>

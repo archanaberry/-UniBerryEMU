@@ -22,6 +22,18 @@
 
 // arm.h
 
+/****************************************************************/
+ //                                                              //
+ //  -------------------UniBerry EMU Engine-------------------   //
+ //  Created by: Archana Berry                                   //
+ //  Architecture: ARM (AArch32/AArch64)                         //
+ //  Version resource: v0.001_alpha                              //
+ //  File: arch/arm.h                                            //
+ //  Type: header[architecture]                                  //
+ //  Desc: ARM architecture support for baremetal emulation      //
+ //                                                              //
+ /****************************************************************/
+
 #ifndef ARCH_ARM_H
 #define ARCH_ARM_H
 
@@ -54,6 +66,7 @@ extern "C" {
 #define ARM_REG_PC   15
 #define ARM_REG_CPSR 16
 
+// ARM64 registers indexes (AArch64 X0..X30, SP index 31)
 #define ARM64_REG_X0   0
 #define ARM64_REG_X1   1
 #define ARM64_REG_X2   2
@@ -93,63 +106,57 @@ extern "C" {
 // ARM Context Structure
 // ==============================
 typedef struct {
-    // General Purpose Registers
-    union {
-        uint32_t r[16];  // ARM32
-        uint64_t x[31];  // ARM64
-    };
-    
+    // Separate storage for 32-bit and 64-bit registers to avoid aliasing/size issues
+    uint32_t r32[16];   // ARM32 registers R0..R15
+    uint64_t x64[32];   // ARM64 registers X0..X30 + SP at index 31
+
     // Special Registers
     uint32_t cpsr;      // ARM32 CPSR
     uint64_t pstate;    // ARM64 PSTATE
-    
-    // System Registers
-    uint32_t ttbr0;     // Translation Table Base Register 0
-    uint32_t ttbr1;     // Translation Table Base Register 1
-    uint32_t ttbcr;     // Translation Table Base Control Register
-    uint32_t dacr;      // Domain Access Control Register
-    
-    // Floating Point/NEON
+
+    // System Registers (simple placeholders)
+    uint32_t ttbr0;
+    uint32_t ttbr1;
+    uint32_t ttbcr;
+    uint32_t dacr;
+
+    // Floating Point/NEON placeholders
     union {
-        uint64_t d[32];  // Double precision
-        uint32_t s[32];  // Single precision
-        uint16_t h[32];  // Half precision
-        uint8_t  b[64];  // Byte
+        uint64_t d[32];
+        uint32_t s[32];
+        uint16_t h[32];
+        uint8_t  b[64];
     } neon;
-    
+
     // Execution State
     bool thumb_mode;
     bool big_endian;
     bool privileged;
     uint8_t current_el;  // Exception Level (ARM64)
-    
+
     // Memory Management
     uint64_t page_table_base;
     uint32_t mmu_enabled;
-    
-    // Cache State
+
+    // Cache & perf counters
     uint32_t cache_type;
     uint32_t cache_size;
-    
-    // Performance Counters
     uint64_t cycle_count;
     uint64_t instr_count;
-    
+
     // Interrupt State
     uint32_t irq_mask;
     uint32_t fiq_mask;
     bool irq_pending;
     bool fiq_pending;
-    
+
     // Debug State
     uint32_t debug_registers[16];
     bool breakpoint_hit;
     uint64_t breakpoint_addr;
 } ARMState;
 
-// ==============================
-// ARM Emulation Functions
-// ==============================
+// Forward declaration
 typedef struct ARMEmulator ARMEmulator;
 
 // Creation & Destruction
@@ -157,10 +164,10 @@ ARMEmulator* arm_create_emulator(bool is_64bit, bool thumb_mode, size_t mem_size
 void arm_destroy_emulator(ARMEmulator *emu);
 
 // Memory Management
-int arm_map_memory(ARMEmulator *emu, uint64_t addr, size_t size, 
-                  bool read, bool write, bool exec);
-int arm_load_binary(ARMEmulator *emu, const uint8_t *data, size_t size, 
-                   uint64_t load_addr);
+int arm_map_memory(ARMEmulator *emu, uint64_t addr, size_t size,
+                   bool read, bool write, bool exec);
+int arm_load_binary(ARMEmulator *emu, const uint8_t *data, size_t size,
+                    uint64_t load_addr);
 
 // Register Access
 int arm_read_register(ARMEmulator *emu, int reg, uint64_t *value);
@@ -170,7 +177,7 @@ int arm_write_memory(ARMEmulator *emu, uint64_t addr, const void *buffer, size_t
 
 // Execution
 int arm_execute(ARMEmulator *emu, uint64_t start_addr, uint64_t end_addr,
-               size_t max_instructions, size_t *instr_executed);
+                size_t max_instructions, size_t *instr_executed);
 int arm_step(ARMEmulator *emu, size_t *instr_executed);
 
 // State Management
@@ -185,28 +192,24 @@ int arm_clear_breakpoint(ARMEmulator *emu, uint64_t addr);
 // Interrupt Handling
 int arm_trigger_irq(ARMEmulator *emu);
 int arm_trigger_fiq(ARMEmulator *emu);
-int arm_set_interrupt_handler(ARMEmulator *emu, 
-                             void (*handler)(void *user, int type),
-                             void *user);
+int arm_set_interrupt_handler(ARMEmulator *emu,
+                              void (*handler)(void *user, int type),
+                              void *user);
 
 // Debug & Trace
-int arm_disassemble(ARMEmulator *emu, uint64_t addr, size_t count, 
-                   char **output);
+int arm_disassemble(ARMEmulator *emu, uint64_t addr, size_t count,
+                    char **output);
 int arm_trace_enable(ARMEmulator *emu, bool enable);
-int arm_get_perf_stats(ARMEmulator *emu, uint64_t *cycles, 
-                      uint64_t *instructions);
+int arm_get_perf_stats(ARMEmulator *emu, uint64_t *cycles,
+                       uint64_t *instructions);
 
-// ==============================
 // Architecture Detection
-// ==============================
 uint64_t aarch32_detect_entry(const uint8_t *data, size_t size);
 uint64_t aarch64_detect_entry(const uint8_t *data, size_t size);
 
-// ==============================
 // Baremetal Execution
-// ==============================
 int arm_execute_baremetal(const uint8_t *code, size_t size, uint64_t entry,
-                         size_t mem_size, bool verbose, uint64_t *result);
+                          size_t mem_size, bool verbose, uint64_t *result);
 
 #ifdef __cplusplus
 }
